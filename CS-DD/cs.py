@@ -24,7 +24,7 @@
     "import pywt\n",
     "import numpy as np\n",
     "import torch\n",
-    "import torch.optim as optim\n",
+    "import torch.optim\n",
     "import torchvision\n",
     "from torch.autograd import Variable\n",
     "from sklearn import linear_model\n",
@@ -210,7 +210,7 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "def fit2(G,A,y, num_iter = 2000, lr_decay_epoch = 200):\n",
+    "def fit2(G, num_iter = 2000, lr_decay_epoch = 200, A):\n",
     "    z = Variable(torch.randn(1,model.config.noiseVectorDim), requires_grad = True)\n",
     "    optimizer = optim.Adam([z])\n",
     "    for i in range(num_iter):\n",
@@ -221,7 +221,6 @@
     "        \n",
     "        def closure():\n",
     "            optimizer.zero_grad()\n",
-    "            y = A\n",
     "            loss = mse(A*G(z), A*G0)\n",
     "            loss.backward(retain_graph = True)\n",
     "            if i % lr_decay_epoch == 0:\n",
@@ -232,6 +231,7 @@
     "    return z\n",
     "\n",
     "d_image = G0.numel()\n",
+    "x = G0.reshape(d_image)\n",
     "\n",
     "f = 0.2 #compression rate\n",
     "print('Compression rate is ', f)\n",
@@ -241,8 +241,7 @@
     "\n",
     "# random Gaussian measurement matrix : A\n",
     "A = torch.randn(m_image, d_image)\n",
-    "x = G0.reshape(d_image)\n",
-    "y = A*x\n"
+    "\n"
    ]
   },
   {
@@ -251,7 +250,7 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "z = fit2(G, A, y, num_iter = 2000, lr_decay_epoch = 200)\n",
+    "z = fit2(G, num_iter = 20, lr_decay_epoch = 10, A=A)\n",
     "x_hat = G(z)\n",
     "\n",
     "#x_hat.reshape(x.size(0),x.size(1))\n",
