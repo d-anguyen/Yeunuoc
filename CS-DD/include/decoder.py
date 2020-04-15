@@ -35,7 +35,6 @@ class autoencodernet(torch.nn.Module):
     def __init__(self,
                  num_output_channels,
                  num_channels_up,
-                 Ameas,
                  need_sigmoid=True,
                  pad='reflection',
                  upsample_mode='bilinear',
