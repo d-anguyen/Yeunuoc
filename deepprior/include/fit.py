@@ -131,6 +131,7 @@ def fit(net,
         net_input.requires_grad = True
         print('optimizing over latent code Z1')
         p += [net_input]
+        #print(p) #
     else:
         print('not optimizing over latent code Z1')
 
