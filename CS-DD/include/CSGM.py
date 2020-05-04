@@ -189,7 +189,7 @@ def CS_DD(net, num_channels, d_image, y, A, device, num_iter = 8000, lr_decay_ep
     elif decodetype=='transposeconv':
         p = [x for x in net.convdecoder.parameters() ] #list of all weigths
 
-    optimizer = torch.optim.Adam(p, lr=0.0002)
+    optimizer = torch.optim.Adam(p, lr=0.001)
     mse = torch.nn.MSELoss()
     m_image = y.numel()
     
@@ -197,7 +197,7 @@ def CS_DD(net, num_channels, d_image, y, A, device, num_iter = 8000, lr_decay_ep
 
         #################
         if lr_decay_epoch is not 0:
-            optimizer = exp_lr_scheduler(optimizer, i, init_lr=0.0002, lr_decay_epoch=lr_decay_epoch,factor=0.8)
+            optimizer = exp_lr_scheduler(optimizer, i, init_lr=0.001, lr_decay_epoch=lr_decay_epoch,factor=0.7)
 
         #################
         def closure():
