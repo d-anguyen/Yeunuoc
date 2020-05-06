@@ -91,7 +91,7 @@ def CS_hybrid(G, net, num_channels, d_image, y, A, z_0, latentDim, num_iter = 10
     print("initializing latent code B1...")
     net_input = torch.autograd.Variable(torch.zeros(shape))
     net_input.data.uniform_()
-    net_input.data *= 1./20
+    net_input.data *= 1./10
 
     net_input_saved = net_input.data.clone()
     noise = net_input.data.clone()
@@ -231,3 +231,75 @@ def exp_lr_scheduler(optimizer, epoch, init_lr=0.001, lr_decay_epoch=500, factor
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
     return optimizer
+
+def CS_hybrid2(G, net, net_input, num_channels, d_image, y, A, z_0, latentDim, num_iter = 1000, lr_decay_epoch = 300, decodetype = 'upsample'):
+    G.eval()
+    #z = torch.normal(torch.zeros(1,latentDim)) #.to(config.device)
+    z = torch.autograd.Variable(z_0, requires_grad = True)#.to(config.device)
+    
+    
+    # collecting all trainable parameters
+    alpha_init = torch.zeros(1)
+    beta_init = torch.zeros(1)
+    alpha_init.data[0] = 0.8
+    beta_init.data[0] = 0.2
+
+    alpha = torch.autograd.Variable(alpha_init, requires_grad=True)
+    beta = torch.autograd.Variable(beta_init, requires_grad=True)
+    
+    if decodetype=='upsample':
+        p = [x for x in net.decoder.parameters() ] #list of all weigths
+    elif decodetype=='transposeconv':
+        p = [x for x in net.convdecoder.parameters() ] #list of all weigths
+    
+    
+    #weight_decay = 0
+    #optimizer = torch.optim.Adam(p, lr=0.001)
+    
+    optimizer_z = torch.optim.Adam(
+    [
+        {"params": alpha, "lr": 0.01},
+        {"params": beta, "lr": 0.01},
+        {"params": z, "lr": 0.1}
+    ])
+    
+    optimizer_net = torch.optim.Adam(
+    [
+        {"params": p, "lr": 0.0001}
+    ])
+    
+    mse = torch.nn.MSELoss()
+    loss_per_iter = np.zeros(num_iter)
+    m_image = y.numel()
+    
+    for i in range(num_iter):
+
+        #################
+        if lr_decay_epoch is not 0:
+            optimizer_net = exp_lr_scheduler(optimizer_net, i, init_lr=0.0002, lr_decay_epoch=lr_decay_epoch,factor=0.7)
+
+        #################
+        
+        optimizer_z.zero_grad()
+        optimizer_net.zero_grad()
+            
+        alpha_clamp = alpha.clamp(0,1)
+        beta_clamp = beta.clamp(0,1)
+            
+        x_var = alpha_clamp*G(z) + beta_clamp*(2*net(net_input.type(dtype))-1)
+        #y_hat = x_hat
+            
+        y_var = torch.matmul(A,x_var.reshape(d_image))
+        loss = mse(y_var, y) #torch.matmul(A,x_hat)
+        loss.backward()
+        #mse_wrt_truth[i] = loss.data.cpu().numpy()
+        
+        optimizer_z.step()
+        optimizer_net.step()
+        
+        loss_per_iter[i] = loss.item()/np.sqrt(m_image) # normalization A <-> A/sqrt(m)
+        if i % 100 == 0:
+            print ('Iteration %04d   Train loss %f ' % (i, loss_per_iter[i] ))
+
+    return net, net_input, z, alpha, beta, loss_per_iter
+
